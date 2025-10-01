@@ -20,6 +20,7 @@ The Azure MCP Server updates automatically by default whenever a new release com
 
 - Removed the following dependencies:
   - `Azure.ResourceManager.Grafana` [[628](https://github.com/microsoft/mcp/pull/622)]
+- Change base Docker image from `bookworm-slim` to `alpine`. [[#651](https://github.com/microsoft/mcp/pull/651)]
 
 ## 0.8.3 (2025-09-30)
 
