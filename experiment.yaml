@@ -1,0 +1,16 @@
+name: mcp-server-mode-comparison
+evals:
+  - ./.work/vallyEvals/**/eval.yaml
+
+vary: [/environments/development/mcpServers/azmcp/command, /environments/development/mcpServers/azmcp/args]
+
+baseline:
+  command: "./.work/build/Azure.Mcp.Server/windows-x64/azmcp"
+  args: ["server", "start"]
+variants:
+  all-mode:
+    overrides:
+      args: ["server", "start", "--mode", "all"]
+  single-mode:
+    overrides:
+      args: ["server", "start", "--mode", "single"]
