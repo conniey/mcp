@@ -14,6 +14,11 @@ public class PromptDatastore
                                     .ToDictionary(g => g.Key, g => g.ToList());
     }
 
+    public List<string> GetNamespaces()
+    {
+        return [.. promptsByNamespace.Keys];
+    }
+
     public List<TestPrompt> GetPromptsByNamespace(string toolNamespace)
     {
         return promptsByNamespace.TryGetValue(toolNamespace, out var prompts)
