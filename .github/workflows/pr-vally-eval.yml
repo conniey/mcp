@@ -1,10 +1,9 @@
-name: Pull Request vally evaluations
+name: Pull Request Vally evaluations
 description: |
   Evaluates E2E prompts to ensure they still pass when tools are changed.
 
 on:
   pull_request:
-    types: [opened, synchronize]
     paths:
       - 'tools/**'
       - 'core/Microsoft.Mcp.Core/**'
@@ -13,18 +12,6 @@ permissions:
   copilot-requests: write
   contents: read
   pull-requests: read
-engine: copilot
-network:
-  allowed:
-    - defaults
-    - github
-    - node
-tools:
-  github:
-    toolsets: [default]
-safe-outputs:
-  add-comment:
-  create-pull-request-review-comment:
 
 jobs:
   eval-job:
