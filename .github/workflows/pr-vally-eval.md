@@ -29,6 +29,8 @@ safe-outputs:
 jobs:
   eval-job:
     runs-on: ubuntu-latest
+    env:
+      BUILD_REASON: PullRequest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7.0.0
@@ -38,10 +40,14 @@ jobs:
 
       - name: Create build_info.json
         shell: pwsh
-        run: ./eng/scripts/New-BuildInfo.ps1 -ServerName Azure.Mcp.Server -CI
+        run: ./eng/scripts/New-BuildInfo.ps1 -ServerName Azure.Mcp.Server
 
-      - name: Run vally e2e evaluations
-        run: dotnet build --project ./eng/tools/VallyEvaluator/VallyEvaluator.csproj
-      
+      - name: Build server code
+        shell: pwsh
+        run: ./eng/scripts/Build-Code.ps1 -BuildInfoPath $($env:GITHUB_WORKSPACE)/.work/build_info.json
+    
+      - name: Run vally evaluations
+        run: dotnet run --project ./eng/tools/VallyEvaluator/VallyEvaluator.csproj --launch-profile "All"
+
       - name: List evaluations
         run: ls -R ./.work/evals/
