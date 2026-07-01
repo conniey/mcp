@@ -32,6 +32,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7.0.0
+        with:
+          fetch-depth: 0
 
       - name: Install .NET SDK
         uses: actions/setup-dotnet@v5.4.0
@@ -49,7 +51,7 @@ jobs:
         shell: pwsh
         run: |
           if ($env:BUILD_REASON -eq 'PullRequest') {
-            Write-Host "Run type: PR run"
+            Write-Host "Run type: PR run."
           }
           else {
             Write-Host "Run type: manual run"
