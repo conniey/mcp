@@ -1,4 +1,4 @@
-name: Pull Request Vally evaluations
+name: Vally evaluations
 description: |
   Evaluates E2E prompts to ensure they still pass when tools are changed.
 
@@ -25,6 +25,8 @@ permissions:
 jobs:
   eval-job:
     runs-on: ubuntu-latest
+    env:
+      COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7.0.0
@@ -54,7 +56,10 @@ jobs:
         run: ./eng/scripts/Build-Code.ps1 -BuildInfoPath "${{ github.workspace }}/.work/build_info.json"
     
       - name: Run vally evaluations
-        run: dotnet run --project ./eng/tools/VallyEvaluator/VallyEvaluator.csproj --launch-profile "All"
+        run: dotnet run --project ./eng/tools/VallyEvaluator/VallyEvaluator.csproj --launch-profile "Demo"
+
+      - name: Run vally
+        run: vally eval --suite linux --work-dir '${{ github.workspace }}'
 
       - name: List evaluations
         run: ls -R ./.work/evals/
