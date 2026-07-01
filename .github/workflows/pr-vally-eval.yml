@@ -79,9 +79,6 @@ jobs:
       - name: Create vally evaluations
         run: dotnet run --project '${{ github.workspace }}/eng/tools/VallyEvaluator/src/VallyEvaluator.csproj' --launch-profile "Demo"
 
-      - name: List evaluations
-        run: ls -R ${{ github.workspace }}/.work/evals/
-
       - name: Run vally
         run: |
           $commandArg = ""
