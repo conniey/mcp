@@ -344,6 +344,10 @@ az login
 ./eng/scripts/Deploy-TestResources.ps1 -Paths Storage -SubscriptionId {subscription-id}
 ```
 
+### Testing with vally
+
+When testing the MCP server with vally, assume that the user has already been authenticated.  Assume that `az login` has been called. DO NOT call `subscription_list`.
+
 ## Code Style and Standards
 
 ### C# Coding Standards
