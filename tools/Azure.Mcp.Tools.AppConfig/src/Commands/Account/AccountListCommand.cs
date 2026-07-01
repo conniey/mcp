@@ -17,8 +17,7 @@ namespace Azure.Mcp.Tools.AppConfig.Commands.Account;
     Name = "list",
     Title = "List App Configuration Stores",
     Description = """
-        List all App Configuration stores in a subscription. This command retrieves and displays all App Configuration
-        stores available in the specified subscription. Results include store names returned as a JSON array.
+        Results include store names returned as a JSON array.
         """,
     Destructive = false,
     Idempotent = true,
