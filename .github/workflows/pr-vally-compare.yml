@@ -1,0 +1,396 @@
+name: Vally Compare
+
+# Triggered by a PR comment of the form: vally compare <release/tag>
+# where <release/tag> is a release name or git tag whose "vally-results" artifact
+# is used as the baseline to compare this PR's eval run against.
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  actions: read 
+  pull-requests: write
+
+jobs:
+  compare:
+    if: >-
+      ${{ github.event.issue.pull_request &&
+          startsWith(github.event.comment.body, 'vally compare ') }}
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: React to comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+        run: |
+          gh api --method POST \
+            "repos/$REPO/issues/comments/$COMMENT_ID/reactions" \
+            -f content='eyes' >/dev/null || true
+
+      - name: Parse command
+        id: parse
+        env:
+          BODY: ${{ github.event.comment.body }}
+        run: |
+          FOO="$(printf '%s' "$BODY" \
+                 | sed -n '1s/^vally compare[[:space:]]\+//p' \
+                 | tr -d '\r' | awk '{print $1}')"
+          if [ -z "$FOO" ]; then
+            echo "::error::No release/tag argument provided. Usage: vally compare <release/tag>"
+            exit 1
+          fi
+          echo "foo=$FOO" >> "$GITHUB_OUTPUT"
+          echo "Argument: $FOO"
+
+      - name: Resolve release or tag
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          FOO: ${{ steps.parse.outputs.foo }}
+        run: |
+          set -euo pipefail
+          KIND=""
+          TAG="$FOO"
+
+          # 1) Is there a release published under this tag name?
+          if gh api "repos/$REPO/releases/tags/$FOO" >/tmp/rel.json 2>/dev/null; then
+            KIND="release"
+            TAG="$(jq -r '.tag_name' /tmp/rel.json)"
+          fi
+
+          # 2) Resolve the tag ref to a commit SHA.
+          SHA=""
+          if gh api "repos/$REPO/git/refs/tags/$TAG" >/tmp/ref.json 2>/dev/null; then
+            [ -z "$KIND" ] && KIND="tag"
+            OBJ_TYPE="$(jq -r '.object.type' /tmp/ref.json)"
+            OBJ_SHA="$(jq -r '.object.sha' /tmp/ref.json)"
+            if [ "$OBJ_TYPE" = "tag" ]; then
+              # Annotated tag -> dereference to the underlying commit.
+              SHA="$(gh api "repos/$REPO/git/tags/$OBJ_SHA" --jq '.object.sha')"
+            else
+              SHA="$OBJ_SHA"
+            fi
+          fi
+
+          if [ -z "$SHA" ]; then
+            echo "::error::Could not find a release or tag named '$FOO'"
+            exit 1
+          fi
+
+          echo "Found $KIND '$FOO' at commit $SHA"
+          echo "kind=$KIND" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA"   >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG"   >> "$GITHUB_OUTPUT"
+
+      - name: Get PR head SHA
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          HEAD_SHA="$(gh api "repos/$REPO/pulls/$PR" --jq '.head.sha')"
+          echo "PR #$PR head: $HEAD_SHA"
+          echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pr.outputs.head_sha }}
+          persist-credentials: false
+
+      # ---- Decide which comparison path to take ---------------------------
+      # If some workflow run for the baseline SHA produced a "vally-results"
+      # artifact, we compare against it (mode=compare). Otherwise we fall back
+      # to downloading the released binary at the tag and running a head-to-head
+      # experiment against the freshly built binary (mode=experiment).
+      - name: Determine mode
+        id: mode
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ steps.resolve.outputs.sha }}
+        run: |
+          set -euo pipefail
+          RUN_ID=""
+          for id in $(gh api "repos/$REPO/actions/runs?head_sha=$SHA&per_page=100" \
+                        --jq '.workflow_runs | sort_by(.created_at) | reverse | .[].id'); do
+            has="$(gh api "repos/$REPO/actions/runs/$id/artifacts" \
+                     --jq '[.artifacts[] | select(.name=="vally-results")] | length')"
+            if [ "$has" -gt 0 ]; then RUN_ID="$id"; break; fi
+          done
+          if [ -n "$RUN_ID" ]; then
+            echo "mode=compare"    >> "$GITHUB_OUTPUT"
+            echo "run_id=$RUN_ID"  >> "$GITHUB_OUTPUT"
+            echo "Found vally-results artifact (run $RUN_ID) -> mode=compare"
+          else
+            echo "mode=experiment" >> "$GITHUB_OUTPUT"
+            echo "No vally-results artifact for $SHA -> mode=experiment"
+          fi
+          # Expose mode to later branch-agnostic steps.
+          echo "MODE=$( [ -n "$RUN_ID" ] && echo compare || echo experiment )" >> "$GITHUB_ENV"
+
+
+      - name: Download baseline artifact
+        if: steps.mode.outputs.mode == 'compare'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ steps.mode.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p baseline
+          gh run download "$RUN_ID" --name vally-results --dir baseline
+          ls -R baseline
+
+      - name: Download release binary
+        if: steps.mode.outputs.mode == 'experiment'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ steps.resolve.outputs.tag }}
+          ASSET: Azure.mcp.server-linux64.zip
+        run: |
+          set -euo pipefail
+          mkdir -p release-zip release
+          gh release download "$TAG" --repo "$REPO" --pattern "$ASSET" --dir release-zip
+          unzip -o "release-zip/$ASSET" -d release
+          ls -R release
+
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.0
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v5.4.0
+
+      - run: npm install -g @microsoft/vally-cli
+
+      - name: Create build_info.json
+        shell: pwsh
+        run: |
+          if ($env:BUILD_REASON -eq 'PullRequest') {
+            Write-Host "Run type: PR run"
+          }
+          else {
+            Write-Host "Run type: manual run"
+          }
+          
+          ./eng/scripts/New-BuildInfo.ps1 -ServerName Azure.Mcp.Server
+
+      - name: Build server code
+        shell: pwsh
+        run: |
+          $rid = [System.Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier
+          $parts = $rid.Split('-')
+          $dotnetOs = $parts[0]
+          $arch = $parts[1]
+
+          $platformOs = switch -Regex ($dotnetOs) {
+            '^linux$' { 'linux' }
+            '^osx$' { 'macos' }
+            '^win' { 'windows' }
+            default { throw "Unsupported runtime OS '$dotnetOs' from RID '$rid'" }
+          }
+
+          $platformName = "$platformOs-$arch"
+          Write-Host "Current RID: $rid"
+          Write-Host "Using build platform: $platformName"
+
+          ./eng/scripts/Build-Code.ps1 -BuildInfoPath "${{ github.workspace }}/.work/build_info.json" -PlatformName $platformName
+
+      # ================= COMPARE branch (baseline artifact) ================
+      # ---- Run the eval on the freshly built candidate --------------------
+      # Writes to ./vally-results/<timestamp>/ by default.
+      # Add model/judge API keys here as env from repo secrets if your eval
+      # spec needs them, e.g. OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      - name: Run eval (candidate)
+        if: steps.mode.outputs.mode == 'compare'
+        run: vally eval --eval-spec eval.yml
+
+      - name: Vally compare
+        if: steps.mode.outputs.mode == 'compare'
+        run: |
+          set -euo pipefail
+          # A vally run dir is the one containing results.jsonl. It may sit at
+          # the top level or inside a timestamped subdir; pick the newest.
+          resolve_run() {
+            find "$1" -name results.jsonl -type f 2>/dev/null | sort | tail -1 | xargs -r dirname
+          }
+          RUN_A="$(resolve_run baseline)"
+          RUN_B="$(resolve_run vally-results)"
+          if [ -z "$RUN_A" ]; then echo "::error::No results.jsonl found in ./baseline"; exit 1; fi
+          if [ -z "$RUN_B" ]; then echo "::error::No results.jsonl found in ./vally-results"; exit 1; fi
+          echo "Baseline : $RUN_A"
+          echo "Candidate: $RUN_B"
+          mkdir -p verdict-out
+          # Don't fail here — record the code and let shared steps report/fail.
+          set +e
+          vally compare --eval-spec eval.yml --run-a "$RUN_A" --run-b "$RUN_B" \
+            2>&1 | tee verdict.md
+          CODE=${PIPESTATUS[0]}
+          set -e
+          cp verdict.md verdict-out/
+          echo "VALLY_EXIT=$CODE" >> "$GITHUB_ENV"
+
+      # =============== EXPERIMENT branch (released binary) =================
+      # ---- Generate experiment.yml (released vs PR-built server) ----------
+      - name: Generate experiment.yml
+        if: steps.mode.outputs.mode == 'experiment'
+        env:
+          # TODO: MCP server key exactly as it appears under
+          # environment.mcpServers in your eval.yml.
+          SERVER_KEY: azure
+          # TODO: path (relative to repo root) to the server binary produced
+          # by the "Build PR" step above.
+          BUILT_SERVER_PATH: dist/azmcp
+          # Name of the executable inside the release zip.
+          RELEASED_BIN_NAME: azmcp
+        run: |
+          set -euo pipefail
+
+          # Locate the freshly built binary.
+          BUILT_CMD="$(readlink -f "$BUILT_SERVER_PATH" 2>/dev/null || true)"
+          if [ -z "$BUILT_CMD" ] || [ ! -e "$BUILT_CMD" ]; then
+            echo "::error::Built server not found at '$BUILT_SERVER_PATH' — set BUILT_SERVER_PATH"
+            exit 1
+          fi
+
+          # Locate the released binary inside ./release.
+          RELEASED_BIN="$(find release -type f -name "$RELEASED_BIN_NAME" | head -1 || true)"
+          [ -z "$RELEASED_BIN" ] && RELEASED_BIN="$(find release -maxdepth 2 -type f | head -1 || true)"
+          if [ -z "$RELEASED_BIN" ]; then
+            echo "::error::Could not find a server binary in ./release"
+            exit 1
+          fi
+          RELEASED_CMD="$(readlink -f "$RELEASED_BIN")"
+          chmod +x "$RELEASED_CMD" "$BUILT_CMD" || true
+
+          echo "Released: $RELEASED_CMD"
+          echo "Built   : $BUILT_CMD"
+
+          # Only the launch command differs between the two variants; the rest
+          # of the mcpServers entry is inherited from eval.yml (deep-merge).
+          cat > experiment.yml <<EOF
+          name: azure-mcp-release-vs-pr
+          evals:
+            - eval.yml
+          vary:
+            - /environment/mcpServers/${SERVER_KEY}/command
+          baseline: released
+          variants:
+            released:
+              environment:
+                mcpServers:
+                  ${SERVER_KEY}:
+                    command: "${RELEASED_CMD}"
+            pr-build:
+              environment:
+                mcpServers:
+                  ${SERVER_KEY}:
+                    command: "${BUILT_CMD}"
+          EOF
+          echo "----- experiment.yml -----"
+          cat experiment.yml
+
+      - name: Vally experiment
+        if: steps.mode.outputs.mode == 'experiment'
+        run: |
+          set -euo pipefail
+          mkdir -p verdict-out
+          # Writes to ./vally-experiment-results/<timestamp>/ by default.
+          set +e
+          vally experiment run experiment.yml 2>&1 | tee experiment-log.txt
+          CODE=${PIPESTATUS[0]}
+          set -e
+          echo "VALLY_EXIT=$CODE" >> "$GITHUB_ENV"
+
+          # Collect the experiment-level report + per-variant results.
+          RUN_DIR="$(find vally-experiment-results -maxdepth 1 -mindepth 1 -type d | sort | tail -1 || true)"
+          if [ -n "$RUN_DIR" ]; then
+            cp -r "$RUN_DIR"/. verdict-out/
+            if [ -f "$RUN_DIR/report.md" ]; then
+              cp "$RUN_DIR/report.md" verdict.md
+            fi
+          fi
+          # Fall back to the raw log if no report was produced.
+          [ -f verdict.md ] || cp experiment-log.txt verdict.md
+          cp experiment-log.txt verdict-out/ 2>/dev/null || true
+
+      # ===================== Shared reporting ==============================
+      - name: Upload verdict artifact
+        id: upload
+        if: always() && hashFiles('verdict-out/**') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: vally-verdict
+          path: verdict-out/
+          if-no-files-found: warn
+
+      - name: Reply on PR
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.issue.number }}
+          AUTHOR: ${{ github.event.comment.user.login }}
+          FOO: ${{ steps.parse.outputs.foo }}
+          KIND: ${{ steps.resolve.outputs.kind }}
+          SHA: ${{ steps.resolve.outputs.sha }}
+          MODE: ${{ steps.mode.outputs.mode }}
+          CODE: ${{ env.VALLY_EXIT }}
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+        run: |
+          RUN_URL="${{ github.server_url }}/$REPO/actions/runs/${{ github.run_id }}"
+          case "$MODE" in
+            compare)    LABEL="Vally compare"; SUBJECT="this PR vs $KIND \`$FOO\`" ;;
+            experiment) LABEL="Vally experiment"; SUBJECT="PR build vs released \`$FOO\`" ;;
+            *)          LABEL="Vally"; SUBJECT="\`$FOO\`" ;;
+          esac
+
+          if [ "$CODE" = "0" ]; then
+            HEADER="✅ **$LABEL** — $SUBJECT (\`${SHA:0:7}\`)"
+          elif [ -n "$CODE" ]; then
+            HEADER="❌ **$LABEL** exited $CODE — $SUBJECT (\`${SHA:0:7}\`)"
+          else
+            HEADER="❌ **$LABEL** did not run — see the [run log]($RUN_URL)"
+          fi
+
+          {
+            echo "@$AUTHOR $HEADER"
+            echo
+            if [ -f verdict.md ]; then
+              echo "<details><summary>Verdict</summary>"
+              echo
+              echo '```'
+              head -c 55000 verdict.md
+              if [ "$(wc -c < verdict.md)" -gt 55000 ]; then
+                echo; echo "... (truncated — see full verdict in the artifact)"
+              fi
+              echo '```'
+              echo
+              echo "</details>"
+              echo
+            fi
+            if [ -n "$ARTIFACT_URL" ]; then
+              echo "📦 Full results: [vally-verdict]($ARTIFACT_URL)"
+            fi
+            echo
+            echo "[Workflow run]($RUN_URL)"
+          } > pr-comment.md
+
+          gh api --method POST "repos/$REPO/issues/$PR/comments" -F body=@pr-comment.md >/dev/null
+
+      - name: Fail if vally errored
+        if: always()
+        env:
+          CODE: ${{ env.VALLY_EXIT }}
+        run: |
+          if [ "$CODE" != "0" ]; then
+            echo "::error::vally exited with ${CODE:-<no run>}"
+            exit 1
+          fi
