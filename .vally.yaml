@@ -1,9 +1,9 @@
 paths:
-  evals: ["tools/Azure.Mcp.Tools.*/", ".work/vally/evals/"]
+  evals: ["tools/Azure.Mcp.Tools.*/tests/", ".work/evals/**/"]
   results: ".work/vally/results/"
 
 environments:
-  linux:
+  development:
     mcpServers:
       azmcp:
         type: stdio
