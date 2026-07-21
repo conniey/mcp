@@ -346,7 +346,7 @@ eng/common/TestResources/New-TestResources.ps1 -TestResourcesDirectory tools/Azu
 
 ### Testing with vally
 
-When testing the MCP server with vally, assume that the user has already been authenticated.  Assume that `az login` has been called. DO NOT call `subscription_list`.
+When testing the Azure MCP server with vally, assume that the user has already been authenticated and they have a subscription with id `0000000-1111-2222-3333-444444555555`.  Assume that `az login` has been called. DO NOT call any MCP tool containing `subscription_list`.
 
 ## Code Style and Standards
 
