@@ -22,7 +22,7 @@ internal class Program
         var repoRoot = Utilities.FindRepoRoot(AppContext.BaseDirectory);
         if (string.IsNullOrEmpty(runConfig.WorkingDirectory))
         {
-            runConfig.WorkingDirectory = Path.Join(repoRoot, ".work");
+            runConfig.WorkingDirectory = Path.Join(repoRoot, ".work", "vally");
         }
 
         if (!Directory.Exists(runConfig.WorkingDirectory))
@@ -45,7 +45,8 @@ internal class Program
 
         try
         {
-            await RunEvaluationAsync(repoRoot, runConfig, buildInfo);
+            await CreateEvaluationsAsync(repoRoot, runConfig, buildInfo);
+            await CreateVallyWorkDirectoryAsync(repoRoot, runConfig);
         }
         catch (Exception ex)
         {
@@ -91,7 +92,21 @@ internal class Program
         return results.ToList();
     }
 
-    private static async Task RunEvaluationAsync(string repoRoot, RunConfiguration configuration, BuildInfo? buildInfo = null)
+    private static async Task CreateVallyWorkDirectoryAsync(string repoRoot, RunConfiguration configuration)
+    {
+        var vallyWorkDirectory = Path.Combine(configuration.WorkingDirectory, "workspace");
+        Directory.CreateDirectory(vallyWorkDirectory);
+
+        var agentsPath = Path.Combine(vallyWorkDirectory, "AGENTS.md");
+        const string instructionsResourceName = "VallyEvaluator.Resources.eval.instructions.md";
+        await using var instructionsStream = typeof(Program).Assembly.GetManifestResourceStream(instructionsResourceName)
+            ?? throw new InvalidOperationException($"Embedded resource not found: {instructionsResourceName}");
+        using var reader = new StreamReader(instructionsStream);
+        var instructionsContent = await reader.ReadToEndAsync();
+        await File.WriteAllTextAsync(agentsPath, instructionsContent);
+    }
+
+    private static async Task CreateEvaluationsAsync(string repoRoot, RunConfiguration configuration, BuildInfo? buildInfo = null)
     {
         string promptsPath = string.Empty;
         if (string.IsNullOrEmpty(configuration.PromptFilePath))

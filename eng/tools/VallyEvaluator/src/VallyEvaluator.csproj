@@ -10,10 +10,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Resources\eval-instructions.md" />
+    <None Remove="Resources\eval.instructions.md" />
     <None Remove="Resources\eval.template.yaml" />
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Resources\eval.instructions.md" />
     <EmbeddedResource Include="Resources\eval.template.yaml" />
   </ItemGroup>
 
