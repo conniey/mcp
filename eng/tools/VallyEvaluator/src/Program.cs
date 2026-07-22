@@ -46,7 +46,7 @@ internal class Program
         try
         {
             await CreateEvaluationsAsync(repoRoot, runConfig, buildInfo);
-            await CreateVallyWorkDirectoryAsync(repoRoot, runConfig);
+            //await CreateVallyWorkDirectoryAsync(repoRoot, runConfig);
         }
         catch (Exception ex)
         {
