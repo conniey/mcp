@@ -1,0 +1,264 @@
+name: Azure Managed Lustre evaluations
+description: Evaluation of prompts in the section Azure Managed Lustre
+type: capability
+stimuli:
+  - name: managedlustre evaluation 0
+    prompt: Cancel the autoexport job <job_name> for the Azure Managed Lustre filesystem <filesystem_name> in resource group <resource_group_name>
+    agent_environment: ${AGENT_ENVIRONMENT}
+    graders:
+      - type: tool-calls
+        config:
+          required:
+            - name: managedlustre
+              args:
+                command: managedlustre_fs_blob_autoexport_cancel
+  - name: managedlustre evaluation 1
+    prompt: Cancel the autoimport job <job_name> for the Azure Managed Lustre filesystem <filesystem_name> in resource group <resource_group_name>
+    agent_environment: ${AGENT_ENVIRONMENT}
+    graders:
+      - type: tool-calls
+        config:
+          required:
+            - name: managedlustre
+              args:
+                command: managedlustre_fs_blob_autoimport_cancel
+  - name: managedlustre evaluation 2
+    prompt: Cancel the one-time import job <job_name> for the Azure Managed Lustre filesystem <filesystem_name> in resource group <resource_group_name>
+    agent_environment: ${AGENT_ENVIRONMENT}
+    graders:
+      - type: tool-calls
+        config:
+          required:
+            - name: managedlustre
+              args:
+                command: managedlustre_fs_blob_import_cancel
+  - name: managedlustre evaluation 3
+    prompt: Create a one-time import job for the Azure Managed Lustre filesystem <filesystem_name> in resource group <resource_group_name>
+    agent_environment: ${AGENT_ENVIRONMENT}
+    graders:
+      - type: tool-calls
+        config:
+          required:
+            - name: managedlustre
+              args:
+                command: managedlustre_fs_blob_import_create
+  - name: managedlustre evaluation 4
+    prompt: Create an autoexport job for the Azure Managed Lustre filesystem <filesystem_name> in resource group <resource_group_name>
+    agent_environment: ${AGENT_ENVIRONMENT}
+    graders:
+      - type: tool-calls
+        config:
+          required:
+            - name: managedlustre
+              args:
+                command: managedlustre_fs_blob_autoexport_create
+  - name: managedlustre evaluation 5
+    prompt: Create an autoimport job for the Azure Managed Lustre filesystem <filesystem_name> in resource group <resource_group_name>
+    agent_environment: ${AGENT_ENVIRONMENT}
+    graders:
+      - type: tool-calls
+        config:
+          required:
+            - name: managedlustre
+              args:
+                command: managedlustre_fs_blob_autoimport_create
+  - name: managedlustre evaluation 6
+    prompt: Create an Azure Managed Lustre filesystem with name <filesystem_name>, size <filesystem_size>, SKU <sku>, and subnet <subnet_id> for availability zone <zone>in location <location>. Maintenance should occur on <maintenance_window_day> at <maintenance_window_time>
+    agent_environment: ${AGENT_ENVIRONMENT}
+    graders:
+      - type: tool-calls
+        config:
+          required:
+            - name: managedlustre
+              args:
+                command: managedlustre_fs_create
+  - name: managedlustre evaluation 7
+    prompt: Create an expansion job to increase the storage capacity of the Azure Managed Lustre filesystem <filesystem_name> to <new_size_tib> TiB in resource group <resource_group_name>
+    agent_environment: ${AGENT_ENVIRONMENT}
+    graders:
+      - type: tool-calls
+        config:
+          required:
+            - name: managedlustre
+              args:
+                command: managedlustre_fs_expansion_create
+  - name: managedlustre evaluation 8
+    prompt: Delete the autoexport job <job_name> for the Azure Managed Lustre filesystem <filesystem_name> in resource group <resource_group_name>
+    agent_environment: ${AGENT_ENVIRONMENT}
+    graders:
+      - type: tool-calls
+        config:
+          required:
+            - name: managedlustre
+              args:
+                command: managedlustre_fs_blob_autoexport_delete
+  - name: managedlustre evaluation 9
+    prompt: Delete the autoimport job <job_name> for the Azure Managed Lustre filesystem <filesystem_name> in resource group <resource_group_name>
+    agent_environment: ${AGENT_ENVIRONMENT}
+    graders:
+      - type: tool-calls
+        config:
+          required:
+            - name: managedlustre
+              args:
+                command: managedlustre_fs_blob_autoimport_delete
+  - name: managedlustre evaluation 10
+    prompt: Delete the expansion job <job_name> for the Azure Managed Lustre filesystem <filesystem_name> in resource group <resource_group_name>
+    agent_environment: ${AGENT_ENVIRONMENT}
+    graders:
+      - type: tool-calls
+        config:
+          required:
+            - name: managedlustre
+              args:
+                command: managedlustre_fs_expansion_delete
+  - name: managedlustre evaluation 11
+    prompt: Delete the one-time import job <job_name> for the Azure Managed Lustre filesystem <filesystem_name> in resource group <resource_group_name>
+    agent_environment: ${AGENT_ENVIRONMENT}
+    graders:
+      - type: tool-calls
+        config:
+          required:
+            - name: managedlustre
+              args:
+                command: managedlustre_fs_blob_import_delete
+  - name: managedlustre evaluation 12
+    prompt: Get the details of all the autoimport jobs for the Azure Managed Lustre filesystem <filesystem_name> in resource group <resource_group_name>
+    agent_environment: ${AGENT_ENVIRONMENT}
+    graders:
+      - type: tool-calls
+        config:
+          required:
+            - name: managedlustre
+              args:
+                command: managedlustre_fs_blob_autoimport_get
+  - name: managedlustre evaluation 13
+    prompt: Get the details of autoexport job <job_name> for the Azure Managed Lustre filesystem <filesystem_name> in resource group <resource_group_name>
+    agent_environment: ${AGENT_ENVIRONMENT}
+    graders:
+      - type: tool-calls
+        config:
+          required:
+            - name: managedlustre
+              args:
+                command: managedlustre_fs_blob_autoexport_get
+  - name: managedlustre evaluation 14
+    prompt: Get the details of autoimport job <job_name> for the Azure Managed Lustre filesystem <filesystem_name> in resource group <resource_group_name>
+    agent_environment: ${AGENT_ENVIRONMENT}
+    graders:
+      - type: tool-calls
+        config:
+          required:
+            - name: managedlustre
+              args:
+                command: managedlustre_fs_blob_autoimport_get
+  - name: managedlustre evaluation 15
+    prompt: Get the details of expansion job <job_name> for the Azure Managed Lustre filesystem <filesystem_name> in resource group <resource_group_name>
+    agent_environment: ${AGENT_ENVIRONMENT}
+    graders:
+      - type: tool-calls
+        config:
+          required:
+            - name: managedlustre
+              args:
+                command: managedlustre_fs_expansion_get
+  - name: managedlustre evaluation 16
+    prompt: Get the details of import job <job_name> for the Azure Managed Lustre filesystem <filesystem_name> in resource group <resource_group_name>
+    agent_environment: ${AGENT_ENVIRONMENT}
+    graders:
+      - type: tool-calls
+        config:
+          required:
+            - name: managedlustre
+              args:
+                command: managedlustre_fs_blob_import_get
+  - name: managedlustre evaluation 17
+    prompt: List all expansion jobs for the Azure Managed Lustre filesystem <filesystem_name> in resource group <resource_group_name>
+    agent_environment: ${AGENT_ENVIRONMENT}
+    graders:
+      - type: tool-calls
+        config:
+          required:
+            - name: managedlustre
+              args:
+                command: managedlustre_fs_expansion_get
+  - name: managedlustre evaluation 18
+    prompt: List all one-time import jobs for the Azure Managed Lustre filesystem <filesystem_name> in resource group <resource_group_name>
+    agent_environment: ${AGENT_ENVIRONMENT}
+    graders:
+      - type: tool-calls
+        config:
+          required:
+            - name: managedlustre
+              args:
+                command: managedlustre_fs_blob_import_get
+  - name: managedlustre evaluation 19
+    prompt: List the Azure Managed Lustre filesystems in my resource group <resource_group_name>
+    agent_environment: ${AGENT_ENVIRONMENT}
+    graders:
+      - type: tool-calls
+        config:
+          required:
+            - name: managedlustre
+              args:
+                command: managedlustre_fs_list
+  - name: managedlustre evaluation 20
+    prompt: List the Azure Managed Lustre filesystems in my subscription <subscription_name>
+    agent_environment: ${AGENT_ENVIRONMENT}
+    graders:
+      - type: tool-calls
+        config:
+          required:
+            - name: managedlustre
+              args:
+                command: managedlustre_fs_list
+  - name: managedlustre evaluation 21
+    prompt: List the Azure Managed Lustre SKUs available in location <location>
+    agent_environment: ${AGENT_ENVIRONMENT}
+    graders:
+      - type: tool-calls
+        config:
+          required:
+            - name: managedlustre
+              args:
+                command: managedlustre_fs_sku_get
+  - name: managedlustre evaluation 22
+    prompt: Show the list of autoexport jobs for the Azure Managed Lustre filesystem <filesystem_name> in resource group <resource_group_name>
+    agent_environment: ${AGENT_ENVIRONMENT}
+    graders:
+      - type: tool-calls
+        config:
+          required:
+            - name: managedlustre
+              args:
+                command: managedlustre_fs_blob_autoexport_get
+  - name: managedlustre evaluation 23
+    prompt: Tell me how many IP addresses I need for an Azure Managed Lustre filesystem of size <filesystem_size> using the SKU <sku>
+    agent_environment: ${AGENT_ENVIRONMENT}
+    graders:
+      - type: tool-calls
+        config:
+          required:
+            - name: managedlustre
+              args:
+                command: managedlustre_fs_subnetsize_ask
+  - name: managedlustre evaluation 24
+    prompt: Update the maintenance window of the Azure Managed Lustre filesystem <filesystem_name> to <maintenance_window_day> at <maintenance_window_time>
+    agent_environment: ${AGENT_ENVIRONMENT}
+    graders:
+      - type: tool-calls
+        config:
+          required:
+            - name: managedlustre
+              args:
+                command: managedlustre_fs_update
+  - name: managedlustre evaluation 25
+    prompt: Validate if the network <subnet_id> can host Azure Managed Lustre filesystem of size <filesystem_size> using the SKU <sku>
+    agent_environment: ${AGENT_ENVIRONMENT}
+    graders:
+      - type: tool-calls
+        config:
+          required:
+            - name: managedlustre
+              args:
+                command: managedlustre_fs_subnetsize_validate
